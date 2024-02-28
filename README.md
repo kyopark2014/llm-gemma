@@ -31,3 +31,89 @@ gemma_lm = keras_nlp.models.GemmaCausalLM.from_preset("gemma_2b_en")
 gemma_lm.compile(sampler="top_k")
 gemma_lm.generate("What is the meaning of life?", max_length=64)
 ```
+
+[Gemma meets LangChain - summarize kaggle writeups](https://www.kaggle.com/code/toshik/gemma-meets-langchain-summarize-kaggle-writeups)
+
+```python
+import os
+
+os.environ["KERAS_BACKEND"] = "jax"  # Or "torch" or "tensorflow".
+# Avoid memory fragmentation on JAX backend.
+os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"]="1.00"
+
+import keras
+import keras_nlp
+
+gemma_lm = keras_nlp.models.GemmaCausalLM.from_preset("gemma_instruct_2b_en")
+
+print(gemma_lm.generate("hi, how are you doing?", max_length=256))
+
+# Define the custom model for LangChain
+from typing import Any, Optional, List, Mapping
+from langchain_core.callbacks.manager import CallbackManagerForLLMRun
+from langchain_core.language_models.llms import LLM
+
+class GemmaLC(LLM):
+
+    model: Any = None
+    n: int = None
+
+    def __init__(self, keras_model, n):
+        super(GemmaLC, self).__init__()
+        self.model = keras_model
+        self.n = n
+
+    @property
+    def _llm_type(self) -> str:
+        return "Gemma"
+
+    def _call(self, prompt: str, stop: Optional[List[str]] = None, **kwargs) -> str:
+
+        generated = self.model.generate(prompt, max_length=self.n)
+
+        # post-processing to extract the result of summarization
+        split_string = generated.split("CONCISE SUMMARY:", 1)
+        if len(split_string) > 1:            
+            return split_string[1].lstrip('\n')
+        else:
+            return generated.lstrip('\n')
+
+    @property
+    def _identifying_params(self) -> Mapping[str, Any]:
+        """Get the identifying parameters."""
+        return {"n": self.n}
+
+gemma_lc = GemmaLC(gemma_lm, 1024)
+
+from langchain_core.prompts import PromptTemplate
+
+prompt_template = """Write a concise summary of the following kaggle solution writeup:
+
+
+"{text}"
+
+
+CONCISE SUMMARY:"""
+PROMPT = PromptTemplate(template=prompt_template, input_variables=["text"])
+
+from langchain.chains.summarize import load_summarize_chain
+
+chain = load_summarize_chain(
+    gemma_lc, chain_type="map_reduce",
+    map_prompt=PROMPT,
+    combine_prompt=PROMPT
+)
+
+from langchain import OpenAI, PromptTemplate, LLMChain
+from langchain.chains.mapreduce import MapReduceChain
+from langchain.prompts import PromptTemplate
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.docstore.document import Document
+
+
+def summarize(text):
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size = 1000, chunk_overlap=50)
+    texts = text_splitter.split_text(text)
+    paged_docs = [Document(page_content=t) for t in texts]
+    return chain.invoke(paged_docs)
+```
