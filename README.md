@@ -1,5 +1,9 @@
 # Gemma로 Chatbot 만들기
 
+[AWS JumpStart에서 Gemma 사용하기](https://aws.amazon.com/ko/blogs/machine-learning/gemma-is-now-available-in-amazon-sagemaker-jumpstart/)
+
+
+
 오픈 모델인 [google/gemma-7b](https://huggingface.co/google/gemma-7b)을 이용한 Chatbot을 만들고자 합니다.
 
 [Gemma: Introducing new state-of-the-art open models](https://blog.google/technology/developers/gemma-open-models/)와 같이 Gemini의 기술을 활용한 가볍고(lightweight), 최신의(state-of-the-art) 오픈 모델입니다. [2B와 7B의 모델](https://www.kaggle.com/models/google/gemma)로 사전학습되었고, [instruction-tuned](https://storage.googleapis.com/deepmind-media/gemma/gemma-report.pdf)을 이용하고 있습니다. [256k token 크기](https://www.promptingguide.ai/models/gemma)을 제공합니다.
